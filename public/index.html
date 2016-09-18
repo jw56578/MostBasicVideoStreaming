@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+      
+    </head>
+    <body>
+    <canvas id="myCanvas" width="100" height="100"></canvas>
+    <script   src="https://code.jquery.com/jquery-2.2.4.min.js"   integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="   crossorigin="anonymous"></script>
+    <script>
+
+        //we need to pull in the data as fast as possible
+        //just loop and make an ajax request to get the data
+        //store in a buffer
+        var bufferedFrames = [];
+        function buffer(){
+            setTimeout(function(){
+                $.getJSON('http://localhost:8080/data',function(data){
+                    if(data && data.length > 0){
+                        bufferedFrames.push(data);
+                        buffer();
+                    }
+                });
+            },10); 
+        }
+        buffer();
+
+        /**the player needs to read from buffer and display the data somehow
+         * the player only needs to refresh at the rate of request  animation frame since that is the fastest you can observe changing images
+         * 
+         * 
+         */
+        var framesrun = 0;
+        function refresh(){
+            var frame = bufferedFrames.pop();
+            if(!frame){
+                 window.requestAnimationFrame(refresh);
+                 return;
+            }
+            
+            framesrun++;
+            //the fact that we know the offeset is 4 is a type of encoding
+            var x = 0, y =0;
+            for(var i = 0; i < frame.length; i+=4){
+                var r = frame[i];
+                var g = frame[i+1];
+                var b = frame[i+2];
+                //paint directly to canvas
+                drawPixel(x,y,r,g,b,1);
+                x++;
+                if(x > 99){
+                    x = 0;
+                    y ++;
+                }
+            }
+            updateCanvas();
+            window.requestAnimationFrame(refresh);
+            console.log(framesrun);
+        }
+        //allow buffer to fill
+        setTimeout(function(){
+            window.requestAnimationFrame(refresh);
+        },2000);
+       
+        var canvas = document.getElementById("myCanvas");
+        var canvasWidth = canvas.width;
+        var canvasHeight = canvas.height;
+        var ctx = canvas.getContext("2d");
+        var canvasData = ctx.createImageData(canvasWidth, canvasHeight);
+
+        // That's how you define the value of a pixel //
+        function drawPixel (x, y, r, g, b, a) {
+            var index = (x + (y * canvasWidth) )* 4;
+
+            canvasData.data[index + 0] = r;
+            canvasData.data[index + 1] = g;
+            canvasData.data[index + 2] = b;
+            canvasData.data[index + 3] = 255;
+ 
+        }
+
+        // That's how you update the canvas, so that your //
+        // modification are taken in consideration //
+        function updateCanvas() {
+            ctx.putImageData(canvasData, 0, 0);
+        }
+
+    </script>
+    </body>
+</html>
